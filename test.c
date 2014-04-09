@@ -34,7 +34,7 @@ int main (int argc, char *argv[])
   (void)argc; (void)argv;
 
   int16_t stuff[3] = { 0x9876, 0xf0f0, 0x0000 };
-  const foo f = { 0x1234abcd, "this is a test!", { &stuff[0], &stuff[1], &stuff[2]}, "short string" };
+  const foo f = { 12, "this is a test!", { &stuff[0], &stuff[1], &stuff[2]}, "short string" };
   printf ("a: %x\nb: %s\nmc[0]: %hx\nmc[1]: %hx\nmc[2]: %hx\nmd: %s\n",
     f.a, f.b, *f.mc[0], *f.mc[1], *f.mc[2], f.md);
 

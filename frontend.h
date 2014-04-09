@@ -30,7 +30,7 @@ typedef struct parse_info
   char *base_type;
   char *name;
   char *arr_sz;
-  // TODO: add zeroterm flag, var_array_member_name
+  char *array_def; // null => default, "0"/"1" -> single/zeroterm, other->vararr
 
   struct parse_info *next;
 } parse_info_t;
@@ -47,10 +47,12 @@ void set_name (const char *name);
 void reset_info (void);
 void note_array_size (const char *arr_str);
 void note_pointer (void);
+void handle_pragma (const char *prag);
 
 char *name_struct (const char *name);
 
 void add_placeholder (const char *name);
 bool has_placeholder (const char *name);
+
 
 #endif

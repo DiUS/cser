@@ -27,6 +27,8 @@ SP  (u8|u|U|L)
 ES  (\\(['"\?\\abfnrtv]|[0-7]{1,3}|x[a-fA-F0-9]+))
 WS  [ \t\v\n\f]
 
+%x pragma
+
 %{
 #include "frontend.h"
 #include <stdio.h>
@@ -42,9 +44,14 @@ static void store_lval (void);
 %}
 
 %%
-"/*"                                    { comment(); }
-"//".*                                    { /* consume //-comment */ }
-"#"                                     { consume_logical_line (); }
+"/*"                    { comment(); }
+"//".*                  { /* consume //-comment */ }
+"#"{WS}*"pragma"        { BEGIN(pragma); return(PRAGMA); }
+"_Pragma"               { BEGIN(pragma); return(PRAGMA); }
+<pragma>\n              { BEGIN(INITIAL); }
+<pragma>[ \t\v\f]       {}
+<pragma>[^ \t\v\f\n]+   { return(PRAGMA_ARG); }
+"#"                     { consume_logical_line (); }
 
 "auto"                  { return(AUTO); }
 "break"                 { return(BREAK); }

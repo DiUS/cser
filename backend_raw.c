@@ -11,12 +11,23 @@
 #include <string.h>
 #include <stdlib.h>
 
+static char *fixup_name (const char *name)
+{
+  char *underscored = strdup (name);
+  for (char *p = underscored; *p; ++p)
+    if (*p == ' ')
+      *p = '_';
+  return underscored;
+}
+
 
 static bool write_store_native (const type_t *type, FILE *fh, FILE *fc)
 {
+  char *utype = fixup_name (type->type_name);
+
   fprintf (fh,
     "int cser_raw_store_%s (const %s *val, cser_raw_write_fn w, void *q);\n",
-    type->display_name, type->type_name);
+    utype, type->type_name);
   fprintf (fc,
     "int cser_raw_store_%s (const %s *val, cser_raw_write_fn w, void *q)\n"
     "{\n"
@@ -29,21 +40,24 @@ static bool write_store_native (const type_t *type, FILE *fh, FILE *fc)
     "  }\n"
     "  return w (bytes, sizeof (%s), q);\n"
     "}\n",
-    type->display_name, type->type_name,
+    utype, type->type_name,
     type->type_name,
     type->type_name,
     type->type_name,
     type->type_name,
     type->type_name
     );
+  free (utype);
   return !ferror (fh) && !ferror (fc);
 }
 
 
 static bool write_load_native (const type_t *type, FILE *fh, FILE *fc)
 {
+  char *utype = fixup_name (type->type_name);
+
   fprintf (fh,"int cser_raw_load_%s (%s *val, cser_raw_read_fn r, void *q);\n",
-    type->display_name, type->type_name);
+    utype, type->type_name);
 
   fprintf (fc,
     "int cser_raw_load_%s (%s *val, cser_raw_read_fn r, void *q)\n"
@@ -58,13 +72,14 @@ static bool write_load_native (const type_t *type, FILE *fh, FILE *fc)
     "  *val = tmp;\n"
     "  return 0;\n"
     "}\n",
-    type->display_name, type->type_name,
+    utype, type->type_name,
     type->type_name,
     type->type_name,
     type->type_name,
     type->type_name,
     type->type_name
     );
+  free (utype);
   return !ferror (fh) && !ferror (fc);
 }
 
@@ -85,21 +100,26 @@ static void write_presence (FILE *fc, const char *name, bool arr)
 
 static bool write_store_struct (const type_t *type, FILE *fh, FILE *fc)
 {
+  char *utype = fixup_name (type->type_name);
   fprintf (fh,
     "int cser_raw_store_%s (const %s *val, cser_raw_write_fn w, void *q);\n",
-    type->display_name, type->type_name);
+    utype, type->type_name);
 
   fprintf (fc,
     "int cser_raw_store_%s (const %s *val, cser_raw_write_fn w, void *q)\n"
     "{\n",
-    type->display_name, type->type_name);
- 
+    utype, type->type_name);
+
+  free (utype);
+  utype = 0;
+
   for (member_t *m = type->composite; m; m = m->next)
   {
     fputs (" {\n", fc);
     bool array = false;
     if (m->opts.variable_array_size_member)
     {
+      // FIXME
       if (!m->opts.is_ptr)
         abort ();
       write_presence (fc, m->member_name, false);
@@ -144,25 +164,21 @@ static bool write_store_struct (const type_t *type, FILE *fh, FILE *fc)
       (!m->opts.is_ptr ||
        m->opts.cardinality == CDN_ZEROTERM_ARRAY ||
        m->opts.variable_array_size_member);
-    char *disp_name = strdup (m->base_type);
-    char *p = disp_name;
-    for (; *p; ++p)
-      if (*p == ' ')
-        *p = '_';
+    utype = fixup_name (m->base_type);
     fprintf (fc,
       "      int ret = cser_raw_store_%s ((%s*)%sval->%s%s, w, q);\n"
       "      if (ret != 0)\n"
       "        return ret;\n"
       "   }\n"
       "%s\n",
-      disp_name,
+      utype,
       m->base_type,
       need_amp ? "&" : "",
       m->member_name,
       array ? "[i]" : "",
       array ? "  }" : ""
       );
-    free (disp_name);
+    free (utype);
 
     fputs (" }\n", fc);
   }
@@ -176,10 +192,7 @@ static void write_load_item (
   const char *target, const char *base_type, const char *indent, bool pointer,
   FILE *fc)
 {
-  char *name = strdup (base_type);
-  for (char *p = name; *p; ++p)
-    if (*p == ' ')
-      *p = '_';
+  char *utype = fixup_name (base_type);
 
   if (pointer)
   {
@@ -195,7 +208,7 @@ static void write_load_item (
       indent, base_type, base_type,
       indent,
       indent,
-      indent, name,
+      indent, utype,
       indent,
       indent, target,
       indent,
@@ -205,10 +218,10 @@ static void write_load_item (
   else
     fprintf (fc,
       "%sint ret = cser_raw_load_%s ((%s*)&%s, r, q);\n",
-      indent, name, base_type, target
+      indent, utype, base_type, target
       );
 
-  free (name);
+  free (utype);
 }
 
 
@@ -227,48 +240,48 @@ static void write_presence_check (FILE *fc)
 
 static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
 {
+  char *utype = fixup_name (type->type_name);
+
   fprintf (fh,
     "int cser_raw_load_%s (%s *val, cser_raw_read_fn r, void *q);\n",
-    type->display_name, type->type_name);
+    utype, type->type_name);
 
   fprintf (fc,
     "int cser_raw_load_%s (%s *val, cser_raw_read_fn r, void *q)\n"
     "{\n",
-    type->display_name, type->type_name);
+    utype, type->type_name);
+
+  free (utype);
+  utype = 0;
 
   for (member_t *m = type->composite; m; m = m->next)
   {
     fputs (" {\n", fc);
-    if (m->opts.variable_array_size_member)
+    switch (m->opts.cardinality)
     {
-      write_presence_check (fc);
-      fprintf (fc,
-        "    uint8_t *bytes = calloc (val->%s, sizeof (%s));\n"
-        "    if (!bytes)\n"
-        "      return -ENOMEM;\n",
-        m->opts.variable_array_size_member, m->base_type
-        );
-      fprintf (fc,
-        "    for (unsigned i = 0; i < %s; ++i)\n"
-        "    {\n",
-        m->opts.variable_array_size_member
-        );
-      char *target;
-      if (asprintf (&target, "(bytes + (i * sizeof (%s)))", m->base_type) < 0)
-        return false;
-      write_load_item (target, m->base_type, "      ", m->opts.is_ptr, fc);
-      free (target);
-      fprintf (fc,
-        "    if (ret != 0)\n"
-        "      return ret;\n"
-        "    val->%s = (%s *)bytes;\n"
-        "  }\n",
-        m->member_name,
-        m->base_type
-        );
-    }
-    else switch (m->opts.cardinality)
-    {
+      case CDN_VAR_ARRAY:
+        write_presence_check (fc);
+        fprintf (fc,
+          "    %s *items = calloc (val->%s, sizeof (%s));\n"
+          "    if (!items)\n"
+          "      return -ENOMEM;\n",
+          m->base_type, m->opts.variable_array_size_member, m->base_type
+          );
+        fprintf (fc,
+          "    for (unsigned i = 0; i < val->%s; ++i)\n"
+          "    {\n",
+          m->opts.variable_array_size_member
+          );
+        write_load_item ("items[i]", m->base_type, "      ", false, fc);
+        fprintf (fc,
+          "      if (ret != 0)\n"
+          "        return ret;\n"
+          "      val->%s = items;\n"
+          "    }\n"
+          "  }\n",
+          m->member_name
+          );
+        break;
       case CDN_ZEROTERM_ARRAY:
         // This looks nothing like a normal array load, as it needs to
         // incrementally load until it finds the end marker. A bog standard
@@ -359,7 +372,7 @@ static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
 }
 
 
-bool backend_raw (const type_list_t *types, FILE *fh, FILE *fc)
+bool backend_raw (const type_list_t *types, const alias_list_t *aliases, FILE *fh, FILE *fc)
 {
   // Callback definitions
   fputs ("#include <stdint.h>\n", fh);
@@ -378,10 +391,6 @@ bool backend_raw (const type_list_t *types, FILE *fh, FILE *fc)
 
   for (; types; types = types->next)
   {
-    // TODO: move this filter into cser.c
-    if (!types->used)
-      continue;
-
     if (types->def.csfn == TYPE_NATIVE)
     {
       if (!write_store_native (&types->def, fh, fc) ||
@@ -394,6 +403,22 @@ bool backend_raw (const type_list_t *types, FILE *fh, FILE *fc)
           !write_load_struct (&types->def, fh, fc))
         return false;
     }
+  }
+
+  for (; aliases; aliases = aliases->next)
+  {
+    char *ualias = fixup_name (aliases->alias_name);
+    char *uactual = fixup_name (aliases->actual_name);
+
+    fprintf (fh,
+     "static inline int cser_raw_store_%s (const %s *val, cser_raw_write_fn w, void *q)\n"
+     "{ return cser_raw_store_%s (val, w, q); }\n",
+      ualias, aliases->alias_name,
+      uactual
+    );
+
+    free (ualias);
+    free (uactual);
   }
 
   return true;

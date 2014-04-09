@@ -231,8 +231,33 @@ void capture_member (void)
     (t && t->csfn == TYPE_DECORATED) ?
       &t->decorated.opts : &no_opts, info);
 
-  // TODO: add support for general zeroterm/var (via _Pragma)
-  mark_char_zeroterm (m->base_type, &m->opts);
+  if (!info->array_def)
+    mark_char_zeroterm (m->base_type, &m->opts);
+  else
+  {
+    if (!info->ptr)
+      yyerror ("pragma can only apply to pointer type");
+    if (*info->array_def == '0')
+      m->opts.cardinality = CDN_SINGLE;
+    else if (*info->array_def == '1')
+      m->opts.cardinality = CDN_ZEROTERM_ARRAY;
+    else
+    {
+      m->opts.cardinality = CDN_VAR_ARRAY;
+      bool found = false;
+      for (member_t *as = member_scope->member; as; as = as->next)
+      {
+        if (strcmp (as->member_name, info->array_def) == 0)
+        {
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+        yyerror ("specified variable array size member not found");
+      m->opts.variable_array_size_member = strdup (info->array_def);
+    }
+  }
 
   member_scope->member = m;
 
@@ -404,6 +429,30 @@ void set_name (const char *name)
 }
 
 
+void handle_pragma (const char *prag)
+{
+  if (!capturing)
+    return;
+
+  if (*prag == '"') // if we get a raw _Pragma("string here")
+    ++prag;
+
+  if (strncmp (prag, "cser ", 5) != 0)
+    return; // not for us
+
+  prag += 5;
+  if (strncmp (prag, "single", 6) == 0)
+    info->array_def = strdup ("0");
+  else if (strncmp (prag, "zeroterm", 8) == 0)
+    info->array_def = strdup ("1");
+  else if (strncmp (prag, "vararray:", 9) == 0)
+    info->array_def = strdup (prag + 9);
+
+  // ensure we omit any trailing "
+  for (char *p = info->array_def; *p; ++p)
+    if (*p == '"')
+      *p = 0;
+}
 
 //
 // Struct names use a placeholder until they've been fully defined

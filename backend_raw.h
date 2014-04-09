@@ -13,6 +13,6 @@
 #include "model.h"
 #include <stdio.h>
 
-bool backend_raw (const type_list_t *types, FILE *fh, FILE *fc);
+bool backend_raw (const type_list_t *types, const alias_list_t *aliases, FILE *fh, FILE *fc);
 
 #endif

@@ -1,6 +1,6 @@
 all: cser
 
-CFLAGS=-std=c99 -O2 -pipe -g -Wall -Wextra -MMD -D_GNU_SOURCE
+CFLAGS=-std=c99 -O2 -pipe -g -Wall -Wextra -Wno-unknown-pragmas -MMD -D_GNU_SOURCE
 
 SRCS=\
 	cser.c \
@@ -36,5 +36,8 @@ out.c:
 
 test: out.c test.c
 	$(CC) $(CFLAGS) -O0 $^ -o $@
+
+run_test: cser test
+	$(CC) -E cser.c | ./cser -i model.h -i test.h type_list_t foo && ./test
 
 sinclude $(DEPS)

@@ -15,6 +15,8 @@
 
 %token  ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
+%token  PRAGMA PRAGMA_ARG
+
 /* GCC extension stuff */
 %token GCCATTRIBUTE GCCASM
 
@@ -358,7 +360,9 @@ struct_declaration_list
 
 struct_declaration
     : specifier_qualifier_list ';'  {set_type($1);} /* for anonymous struct/union */
+    | specifier_qualifier_list pragma ';'  {set_type($1); handle_pragma($2);} /* for anonymous struct/union */
     | specifier_qualifier_list struct_declarator_list ';' {set_type($1);}
+    | specifier_qualifier_list struct_declarator_list pragma ';' {set_type($1); handle_pragma($3);}
     | static_assert_declaration
     ;
 
@@ -625,6 +629,7 @@ translation_unit
 external_declaration
     : function_definition
     | declaration
+    | pragma
     ;
 
 function_definition
@@ -636,6 +641,14 @@ declaration_list
     : declaration
     | declaration_list declaration
     ;
+
+pragma
+    : PRAGMA '(' STRING_LITERAL ')' { $$=$3; }
+    | PRAGMA pragma_arg_list { $$=$2; }
+
+pragma_arg_list
+    : PRAGMA_ARG
+    | PRAGMA_ARG pragma_arg_list { MKVAL("%s %s",$1,$2); $$=s; }
 
 %%
 #include <stdio.h>

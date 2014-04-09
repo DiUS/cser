@@ -158,20 +158,13 @@ static void mark_used (const char *type_name)
     {
       if (t->used)
         return;
+      t->used = true;
 
       if (t->def.csfn == TYPE_DECORATED && t->def.decorated.opts.is_ptr > 1)
       {
         fprintf (stderr, "error: unsupported pointer level %zu for type '%s'\n", t->def.decorated.opts.is_ptr, type_name);
         exit (3);
       }
-
-      t->used = true;
-
-      // replace spaces for the display name
-      char *p = t->def.display_name = strdup (t->def.type_name);
-      for (; *p; ++p)
-        if (*p == ' ')
-          *p = '_';
 
       // descend as needed
       switch (t->def.csfn)
@@ -268,6 +261,7 @@ int main (int argc, char *argv[])
   yyparse ();
 
 
+  // work out which types we need
   while (optind < argc)
   {
     const type_t *t = lookup_type (argv[optind]);
@@ -284,6 +278,33 @@ int main (int argc, char *argv[])
     mark_used (argv[optind++]);
   }
 
+  // discard unused types & aliases
+  type_list_t **t = &types;
+  while (*t)
+  {
+    if (!(*t)->used)
+    {
+      type_list_t *next = (*t)->next;
+      //free (*t); // we can't free as some of these are static, not malloc'd
+      *t = next;
+    }
+    else
+      t = &(*t)->next;
+  }
+  alias_list_t **a = &aliases;
+  while (*a)
+  {
+    if (!(*a)->used)
+    {
+      alias_list_t *next = (*a)->next;
+      //free (*a); // we can't free as some of these are static. not malloc'd
+      *a = next;
+    }
+    else
+      a = &(*a)->next;
+  }
+
+  // start writing the output
   char *h, *c;
   if (asprintf(&h, "%s.h", basename) < 0 || asprintf(&c, "%s.c", basename) < 0)
     return 2;
@@ -309,7 +330,7 @@ int main (int argc, char *argv[])
 
   // invoke chosen backend(s)
   if (backends & BACKEND_RAW)
-    backend_raw (types, fh, fc);
+    backend_raw (types, aliases, fh, fc);
 
 
   fprintf (fh, "#endif\n");

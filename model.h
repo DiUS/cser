@@ -60,8 +60,6 @@ typedef struct decorations
   char *variable_array_size_member;
   // TODO: ensure we abort if this member is *after* the array, as we
   // can't necessarily restore it in that case...
-
-  // TODO: attributes and/or flags from @cser:foo annotations
 } decorations_t;
 
 
@@ -91,7 +89,6 @@ typedef struct decorated_type
 typedef struct type
 {
   char *type_name;
-  char *display_name;
   classification_t csfn;
   union {
     decorated_type_t  decorated;
