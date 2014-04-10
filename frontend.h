@@ -31,6 +31,7 @@ typedef struct parse_info
   char *name;
   char *arr_sz;
   char *array_def; // null => default, "0"/"1" -> single/zeroterm, other->vararr
+  bool omit;
 
   struct parse_info *next;
 } parse_info_t;

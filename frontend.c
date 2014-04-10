@@ -196,6 +196,12 @@ void capture_member (void)
   if (!member_scope)
     yyerror ("nowhere to capture member to");
 
+  if (info->omit)
+  {
+    reset_info ();
+    return;
+  }
+
   if (!info->base_type)
   {
     fprintf (stderr, "warning: ignoring unsupported member on line %d\n", yylineno);
@@ -441,15 +447,19 @@ void handle_pragma (const char *prag)
     return; // not for us
 
   prag += 5;
-  if (strncmp (prag, "single", 6) == 0)
+  if (strcmp (prag, "single") == 0)
     info->array_def = strdup ("0");
-  else if (strncmp (prag, "zeroterm", 8) == 0)
+  else if (strcmp (prag, "zeroterm") == 0)
     info->array_def = strdup ("1");
   else if (strncmp (prag, "vararray:", 9) == 0)
     info->array_def = strdup (prag + 9);
+  else if (strcmp (prag, "omit") == 0)
+    info->omit = true;
+  else if (strcmp (prag, "emit") == 0)
+    info->omit = false;
 
   // ensure we omit any trailing "
-  for (char *p = info->array_def; *p; ++p)
+  for (char *p = info->array_def; p && *p; ++p)
     if (*p == '"')
       *p = 0;
 }

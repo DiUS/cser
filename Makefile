@@ -6,6 +6,7 @@ SRCS=\
 	cser.c \
 	frontend.c \
 	backend_raw.c \
+	backend_xml.c \
 
 AUTO_SRCS=\
 	c11_lexer.c \
@@ -28,16 +29,16 @@ cser: $(OBJS)
 
 .PHONY: clean
 clean:
-	rm -f cser $(AUTO_SRCS) $(AUTO_SRCS:.c=.h) *.o *.d
+	rm -f cser $(AUTO_SRCS) $(AUTO_SRCS:.c=.h) *.o *.d test
 
 
-out.c:
-	./cser
+out.c: cser $(SRCS)
+	$(CC) -E cser.c | ./cser -i model.h -i test.h -b raw -b xml type_list_t foo
 
 test: out.c test.c
 	$(CC) $(CFLAGS) -O0 $^ -o $@
 
-run_test: cser test
-	$(CC) -E cser.c | ./cser -i model.h -i test.h type_list_t foo && ./test
+run_test: test
+	./test
 
 sinclude $(DEPS)

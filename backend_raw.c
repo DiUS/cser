@@ -11,19 +11,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-static char *fixup_name (const char *name)
-{
-  char *underscored = strdup (name);
-  for (char *p = underscored; *p; ++p)
-    if (*p == ' ')
-      *p = '_';
-  return underscored;
-}
-
-
 static bool write_store_native (const type_t *type, FILE *fh, FILE *fc)
 {
-  char *utype = fixup_name (type->type_name);
+  char *utype = make_cname (type->type_name);
 
   fprintf (fh,
     "int cser_raw_store_%s (const %s *val, cser_raw_write_fn w, void *q);\n",
@@ -54,7 +44,7 @@ static bool write_store_native (const type_t *type, FILE *fh, FILE *fc)
 
 static bool write_load_native (const type_t *type, FILE *fh, FILE *fc)
 {
-  char *utype = fixup_name (type->type_name);
+  char *utype = make_cname (type->type_name);
 
   fprintf (fh,"int cser_raw_load_%s (%s *val, cser_raw_read_fn r, void *q);\n",
     utype, type->type_name);
@@ -100,7 +90,7 @@ static void write_presence (FILE *fc, const char *name, bool arr)
 
 static bool write_store_struct (const type_t *type, FILE *fh, FILE *fc)
 {
-  char *utype = fixup_name (type->type_name);
+  char *utype = make_cname (type->type_name);
   fprintf (fh,
     "int cser_raw_store_%s (const %s *val, cser_raw_write_fn w, void *q);\n",
     utype, type->type_name);
@@ -119,7 +109,6 @@ static bool write_store_struct (const type_t *type, FILE *fh, FILE *fc)
     bool array = false;
     if (m->opts.variable_array_size_member)
     {
-      // FIXME
       if (!m->opts.is_ptr)
         abort ();
       write_presence (fc, m->member_name, false);
@@ -164,7 +153,7 @@ static bool write_store_struct (const type_t *type, FILE *fh, FILE *fc)
       (!m->opts.is_ptr ||
        m->opts.cardinality == CDN_ZEROTERM_ARRAY ||
        m->opts.variable_array_size_member);
-    utype = fixup_name (m->base_type);
+    utype = make_cname (m->base_type);
     fprintf (fc,
       "      int ret = cser_raw_store_%s ((%s*)%sval->%s%s, w, q);\n"
       "      if (ret != 0)\n"
@@ -192,7 +181,7 @@ static void write_load_item (
   const char *target, const char *base_type, const char *indent, bool pointer,
   FILE *fc)
 {
-  char *utype = fixup_name (base_type);
+  char *utype = make_cname (base_type);
 
   if (pointer)
   {
@@ -240,7 +229,7 @@ static void write_presence_check (FILE *fc)
 
 static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
 {
-  char *utype = fixup_name (type->type_name);
+  char *utype = make_cname (type->type_name);
 
   fprintf (fh,
     "int cser_raw_load_%s (%s *val, cser_raw_read_fn r, void *q);\n",
@@ -298,7 +287,7 @@ static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
           "      if (offs >= n)\n"
           "      {\n"
           "        if (n == 0)\n"
-          "          n = 4;\n"
+          "          n = 2;\n"
           "        tmp = (%s *)realloc (tmp, n *= 2);\n"
           "        if (!tmp)\n"
           "          return -ENOMEM;\n"
@@ -407,8 +396,8 @@ bool backend_raw (const type_list_t *types, const alias_list_t *aliases, FILE *f
 
   for (; aliases; aliases = aliases->next)
   {
-    char *ualias = fixup_name (aliases->alias_name);
-    char *uactual = fixup_name (aliases->actual_name);
+    char *ualias = make_cname (aliases->alias_name);
+    char *uactual = make_cname (aliases->actual_name);
 
     fprintf (fh,
      "static inline int cser_raw_store_%s (const %s *val, cser_raw_write_fn w, void *q)\n"

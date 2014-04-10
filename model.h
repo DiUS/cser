@@ -123,5 +123,6 @@ typedef struct alias_list
 void add_type (type_list_t *t);
 void add_alias (alias_list_t *a);
 const type_t *lookup_type (const char *type_name);
+char *make_cname (const char *type_name);
 
 #endif

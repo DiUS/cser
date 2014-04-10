@@ -11,6 +11,7 @@
 #include "frontend.h"
 #include "c11_parser.h"
 #include "backend_raw.h"
+#include "backend_xml.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,6 +100,16 @@ const type_t *lookup_type (const char *type_name)
       return lookup_type (a->actual_name);
 
   return 0;
+}
+
+
+char *make_cname (const char *name)
+{
+  char *underscored = strdup (name);
+  for (char *p = underscored; *p; ++p)
+    if (*p == ' ')
+      *p = '_';
+  return underscored;
 }
 
 
@@ -215,6 +226,7 @@ void syntax (const char *name)
 }
 
 #define BACKEND_RAW  0x01
+#define BACKEND_XML  0x02
 
 int main (int argc, char *argv[])
 {
@@ -246,6 +258,7 @@ int main (int argc, char *argv[])
       }
       case 'b':
         if (strcmp ("raw", optarg) == 0) { backends |= BACKEND_RAW; break; }
+        if (strcmp ("xml", optarg) == 0) { backends |= BACKEND_XML; break; }
         // fall through
       default:
         syntax (argv[0]);
@@ -331,6 +344,8 @@ int main (int argc, char *argv[])
   // invoke chosen backend(s)
   if (backends & BACKEND_RAW)
     backend_raw (types, aliases, fh, fc);
+  if (backends & BACKEND_XML)
+    backend_xml (types, aliases, fh, fc);
 
 
   fprintf (fh, "#endif\n");
