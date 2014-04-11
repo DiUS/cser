@@ -37,10 +37,6 @@ static int td; // typedef depth (may be negative when in struct/union/paramlist)
 
 #define MKVAL(fmt, args...) \
   char *s; if (asprintf (&s, fmt, ##args) < 0) yyerror ("out of memory");
-#define FREE1(a)        free (a)
-#define FREE2(a,b)      do { free (a); free (b); } while (0)
-#define FREE3(a,b,c)    do { FREE2(a,b); free (c); } while (0)
-#define FREE4(a,b,c,d)  do { FREE3(a,b,c); free (d); } while (0)
 
 %}
 
@@ -50,7 +46,7 @@ primary_expression
     : IDENTIFIER
     | constant
     | string
-    | '(' expression ')'     { MKVAL("(%s)", $2); $$=s; FREE1($2); }
+    | '(' expression ')'     { MKVAL("(%s)", $2); $$=s; }
     | generic_selection
     ;
 
@@ -79,7 +75,6 @@ string
 
 generic_selection
     : GENERIC '(' assignment_expression ',' generic_assoc_list ')'
-        { FREE1($3); }
     ;
 
 generic_assoc_list
@@ -89,9 +84,7 @@ generic_assoc_list
 
 generic_association
     : type_name ':' assignment_expression
-        { FREE1($3); }
     | DEFAULT ':' assignment_expression
-        { FREE1($3); }
     ;
 
 postfix_expression
@@ -110,15 +103,14 @@ postfix_expression
 argument_expression_list
     : assignment_expression
     | argument_expression_list ',' assignment_expression
-        { FREE1($3); }
     ;
 
 unary_expression
     : postfix_expression
     | INC_OP unary_expression        {$$=strdup ("<n/a>");}
     | DEC_OP unary_expression        {$$=strdup ("<n/a>");}
-    | unary_operator cast_expression { MKVAL("%s %s", $1, $2); FREE1($2); }
-    | SIZEOF unary_expression    { MKVAL("sizeof %s", $2); $$=s; FREE1($2); }
+    | unary_operator cast_expression { MKVAL("%s %s", $1, $2); }
+    | SIZEOF unary_expression    { MKVAL("sizeof %s", $2); $$=s; }
     | SIZEOF '(' type_name ')'   { MKVAL("sizeof(%s)", $3); $$=s; }
     | ALIGNOF '(' type_name ')'  { MKVAL("alignof(%s)", $3); $$=s; }
     ;
@@ -135,95 +127,95 @@ unary_operator
 cast_expression
     : unary_expression
     | '(' type_name ')' cast_expression
-        { MKVAL("(%s)%s", $2, $4); $$=s; FREE1($4); }
+        { MKVAL("(%s)%s", $2, $4); $$=s; }
     ;
 
 multiplicative_expression
     : cast_expression
     | multiplicative_expression '*' cast_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     | multiplicative_expression '/' cast_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     | multiplicative_expression '%' cast_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 additive_expression
     : multiplicative_expression
     | additive_expression '+' multiplicative_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     | additive_expression '-' multiplicative_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 shift_expression
     : additive_expression
     | shift_expression LEFT_OP additive_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     | shift_expression RIGHT_OP additive_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 relational_expression
     : shift_expression
     | relational_expression '<' shift_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     | relational_expression '>' shift_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     | relational_expression LE_OP shift_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     | relational_expression GE_OP shift_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 equality_expression
     : relational_expression
     | equality_expression EQ_OP relational_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     | equality_expression NE_OP relational_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 and_expression
     : equality_expression
     | and_expression '&' equality_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 exclusive_or_expression
     : and_expression
     | exclusive_or_expression '^' and_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 inclusive_or_expression
     : exclusive_or_expression
     | inclusive_or_expression '|' exclusive_or_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 logical_and_expression
     : inclusive_or_expression
     | logical_and_expression AND_OP inclusive_or_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 logical_or_expression
     : logical_and_expression
     | logical_or_expression OR_OP logical_and_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 conditional_expression
     : logical_or_expression
     | logical_or_expression '?' expression ':' conditional_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 assignment_expression
     : conditional_expression
     | unary_expression assignment_operator assignment_expression
-        { MKVAL("%s%s%s", $1, $2, $3); $$=s; FREE2($1, $3); }
+        { MKVAL("%s%s%s", $1, $2, $3); $$=s; }
     ;
 
 assignment_operator
@@ -243,7 +235,7 @@ assignment_operator
 expression
     : assignment_expression
     | expression ',' assignment_expression
-        { MKVAL("%s,%s", $1, $3); FREE2($1, $3); }
+        { MKVAL("%s,%s", $1, $3); }
     ;
 
 constant_expression
@@ -403,17 +395,13 @@ direct_declarator
     | direct_declarator '[' ']'
     | direct_declarator '[' '*' ']'
     | direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'
-        { FREE1($5); }
     | direct_declarator '[' STATIC assignment_expression ']'
-        { FREE1($4); }
     | direct_declarator '[' type_qualifier_list '*' ']'
     | direct_declarator '[' type_qualifier_list STATIC assignment_expression ']'
-        { FREE1($5); }
     | direct_declarator '[' type_qualifier_list assignment_expression ']'
-        { FREE1($4); }
     | direct_declarator '[' type_qualifier_list ']'
     | direct_declarator '[' assignment_expression ']'
-        { note_array_size ($3); FREE1($3); }
+        { note_array_size ($3); }
     | direct_declarator '(' {--td;} parameter_type_list ')' {++td;}
     | direct_declarator '(' ')'
     | direct_declarator '(' identifier_list ')'
@@ -469,29 +457,19 @@ direct_abstract_declarator
     | '[' ']'
     | '[' '*' ']'
     | '[' STATIC type_qualifier_list assignment_expression ']'
-        { FREE1($4); }
     | '[' STATIC assignment_expression ']'
-        { FREE1($3); }
     | '[' type_qualifier_list STATIC assignment_expression ']'
-        { FREE1($4); }
     | '[' type_qualifier_list assignment_expression ']'
-        { FREE1($3); }
     | '[' type_qualifier_list ']'
     | '[' assignment_expression ']'
-        { FREE1($2); }
     | direct_abstract_declarator '[' ']'
     | direct_abstract_declarator '[' '*' ']'
     | direct_abstract_declarator '[' STATIC type_qualifier_list assignment_expression ']'
-        { FREE1($5); }
     | direct_abstract_declarator '[' STATIC assignment_expression ']'
-        { FREE1($4); }
     | direct_abstract_declarator '[' type_qualifier_list assignment_expression ']'
-        { FREE1($4); }
     | direct_abstract_declarator '[' type_qualifier_list STATIC assignment_expression ']'
-        { FREE1($5); }
     | direct_abstract_declarator '[' type_qualifier_list ']'
     | direct_abstract_declarator '[' assignment_expression ']'
-        { FREE1($3); }
     | '(' ')'
     | '(' parameter_type_list ')'
     | direct_abstract_declarator '(' ')'

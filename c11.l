@@ -108,7 +108,9 @@ static unsigned attr_depth;
 
 "__asm__"                               { return GCCASM; }
 "__inline"                              { return INLINE; }
+"__inline__"                            { return INLINE; }
 "__restrict"                            { return RESTRICT; }
+"__const"                               { return CONST; }
 "__extension__"                         {}
 
 {L}{A}*                 { return check_type(); }
