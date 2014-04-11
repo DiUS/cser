@@ -265,7 +265,15 @@ void capture_member (void)
     }
   }
 
-  member_scope->member = m;
+  if (info->union_select)
+  {
+    if (!member_scope->next)
+      yyerror ("union selection not within a struct");
+    m->next = member_scope->next->member;
+    member_scope->next->member = m;
+  }
+  else
+    member_scope->member = m;
 
   reset_info ();
 }
@@ -274,6 +282,12 @@ void capture_member (void)
 void end_capture (bool end_of_members)
 {
   --capturing;
+
+  if (info->omit)
+  {
+    reset_info ();
+    return;
+  }
 
   type_list_t *nt = calloc (1, sizeof (type_list_t));
   type_t *new_type = &nt->def;
@@ -451,12 +465,16 @@ void handle_pragma (const char *prag)
     info->array_def = strdup ("0");
   else if (strcmp (prag, "zeroterm") == 0)
     info->array_def = strdup ("1");
-  else if (strncmp (prag, "vararray:", 9) == 0)
-    info->array_def = strdup (prag + 9);
+  else if (strncmp (prag, "varlen:", 7) == 0)
+    info->array_def = strdup (prag + 7);
   else if (strcmp (prag, "omit") == 0)
     info->omit = true;
   else if (strcmp (prag, "emit") == 0)
     info->omit = false;
+  else if (strcmp (prag, "select") == 0)
+    info->union_select = true;
+  else
+    fprintf (stderr, "warning: unrecognised pragma: cser %s\n", prag);
 
   // ensure we omit any trailing "
   for (char *p = info->array_def; p && *p; ++p)

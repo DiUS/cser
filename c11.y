@@ -18,10 +18,10 @@
 %token  PRAGMA PRAGMA_ARG
 
 /* GCC extension stuff */
-%token GCCATTRIBUTE GCCASM
+%token GCCASM
 
 %start translation_unit
-%expect 3
+%expect 2
 
 %{
 #include "frontend.h"
@@ -34,8 +34,6 @@ extern int yylex (void);
 
 static bool ce;
 static int td; // typedef depth (may be negative when in struct/union/paramlist)
-
-static bool gt = true;
 
 #define MKVAL(fmt, args...) \
   char *s; if (asprintf (&s, fmt, ##args) < 0) yyerror ("out of memory");
@@ -56,44 +54,12 @@ primary_expression
     | generic_selection
     ;
 
-gccattribute_list
-    : gccattribute
-    | gccattribute gccattribute_list
-    ;
-
-gccattribute
-    : GCCATTRIBUTE '(''(' gccattribute_value_list ')'')'
-    ;
-
-gccattribute_value_list
-    : gccattribute_value
-    | gccattribute_value ',' gccattribute_value_list
-    ;
-
-gccattribute_value
-    : IDENTIFIER
-    | IDENTIFIER '(' IDENTIFIER ')'
-    | IDENTIFIER '(' gccattribute_arg_list ')'
-    ;
-
-gccattribute_arg_list
-    : gccattribute_arg
-    | gccattribute_arg ',' gccattribute_arg_list
-    ;
-
-gccattribute_arg
-    : IDENTIFIER
-    | constant
-    ;
-
 gccasm
     : GCCASM '(' STRING_LITERAL ')'
 
-gccstuff
-    : gccattribute_list
-    | gccasm
-    | gccasm gccattribute_list
-    ;
+gccasm_list
+    : gccasm
+    | gccasm gccasm_list
 
 constant
     : I_CONSTANT        /* includes character_constant */
@@ -103,7 +69,7 @@ constant
 
 enumeration_constant        /* before it has been defined as such */
     : IDENTIFIER
-        { add_enum_constant ($1); }
+        { /*add_enum_constant ($1);*/ }
     ;
 
 string
@@ -285,8 +251,8 @@ constant_expression
     ;
 
 declaration
-    : declaration_specifiers ';' {set_type($1); if (ce) end_capture(NO_MEMBERS); ce=false; reset_info(); gt=true; }
-    | declaration_specifiers init_declarator_list ';' {set_type($1); if (ce) end_capture(NO_MEMBERS); ce=false; reset_info(); gt=true; }
+    : declaration_specifiers ';' {set_type($1); if (ce) end_capture(NO_MEMBERS); ce=false; reset_info(); }
+    | declaration_specifiers init_declarator_list ';' {set_type($1); if (ce) end_capture(NO_MEMBERS); ce=false; reset_info(); }
     | static_assert_declaration
     ;
 
@@ -315,7 +281,7 @@ init_declarator
 
 storage_class_specifier
     : TYPEDEF   /* identifiers must be flagged as TYPEDEF_NAME */
-       { ++td; gt=true; capture (NO_MEMBERS); }
+       { ++td; capture (NO_MEMBERS); }
     | EXTERN
     | STATIC
     | THREAD_LOCAL
@@ -424,16 +390,16 @@ alignment_specifier
     ;
 
 declarator
-    : pointer direct_declarator
-    | pointer direct_declarator gccstuff
+    : pointer direct_declarator { $$=$2; }
+    | pointer direct_declarator gccasm_list { $$=$2; }
     | direct_declarator
-    | direct_declarator gccstuff
+    | direct_declarator gccasm_list
     ;
 
 direct_declarator
     : IDENTIFIER
-        { if (td > 0) { --td; add_typedef_name ($1); ce=true; } set_name ($1); gt=false; }
-    | '(' declarator ')'
+        { if (td > 0) { --td; add_typedef_name ($1); ce=true; } set_name ($1); }
+    | '(' declarator ')' { info->omit = true; add_placeholder ($2); /* funcptr */ }
     | direct_declarator '[' ']'
     | direct_declarator '[' '*' ']'
     | direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'

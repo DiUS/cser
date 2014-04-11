@@ -28,6 +28,7 @@ ES  (\\(['"\?\\abfnrtv]|[0-7]{1,3}|x[a-fA-F0-9]+))
 WS  [ \t\v\n\f]
 
 %x pragma
+%x attribute
 
 %{
 #include "frontend.h"
@@ -41,6 +42,7 @@ static void store_lval (void);
 
 #define YY_USER_ACTION store_lval();
 
+static unsigned attr_depth;
 %}
 
 %%
@@ -52,6 +54,11 @@ static void store_lval (void);
 <pragma>[ \t\v\f]       {}
 <pragma>[^ \t\v\f\n]+   { return(PRAGMA_ARG); }
 "#"                     { consume_logical_line (); }
+
+"__attribute__"{WS}*"("    { BEGIN(attribute); ++attr_depth; }
+<attribute>"("          { ++attr_depth; }
+<attribute>")"          { if (--attr_depth == 0) BEGIN(INITIAL); }
+<attribute>[^()]+       {}
 
 "auto"                  { return(AUTO); }
 "break"                 { return(BREAK); }
@@ -99,7 +106,6 @@ static void store_lval (void);
 "_Thread_local"                         { return THREAD_LOCAL; }
 "__func__"                              { return FUNC_NAME; }
 
-"__attribute__"                         { return GCCATTRIBUTE; }
 "__asm__"                               { return GCCASM; }
 "__inline"                              { return INLINE; }
 "__restrict"                            { return RESTRICT; }

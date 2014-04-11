@@ -32,6 +32,7 @@ typedef struct parse_info
   char *arr_sz;
   char *array_def; // null => default, "0"/"1" -> single/zeroterm, other->vararr
   bool omit;
+  bool union_select;
 
   struct parse_info *next;
 } parse_info_t;
@@ -54,6 +55,5 @@ char *name_struct (const char *name);
 
 void add_placeholder (const char *name);
 bool has_placeholder (const char *name);
-
 
 #endif

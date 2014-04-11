@@ -107,49 +107,44 @@ static void write_store_member_item (const member_t *m, FILE *fc)
 
   char *utype = make_cname (m->base_type);
   bool use_idx = (m->opts.cardinality != CDN_SINGLE);
+  bool fixed_size =
+    (m->opts.cardinality == CDN_SINGLE ||
+     m->opts.cardinality == CDN_FIXED_ARRAY);
+  bool item_is_ptr = (fixed_size && m->opts.is_ptr);
 
   if (is_string (m))
     fprintf (fc,
-      "    if (!cser_xml_setvalue (val->%s, ctx))\n"
-      "      return false;\n",
-      m->member_name
+      "    if (val->%s && !cser_xml_setvalue (val->%s, ctx))\n"
+      "      return false;\n"
+      , m->member_name, m->member_name
       );
   else
   {
+    if (item_is_ptr)
+      fprintf (fc,
+        "    bool has_value = val->%s%s;\n"
+        , m->member_name, use_idx ? "[i]" : ""
+        );
+    else
+      fputs (
+        "    bool has_value = true;\n", fc);
+
     if (m->opts.cardinality != CDN_SINGLE)
-    {
-      if (m->opts.is_ptr) // deal with null attr
-        fprintf (fc,
-          "    bool has_value = val->%s[i];\n"
-          , m->member_name
-          );
-      else
-        fputs (
-          "    bool has_value = true;\n", fc);
       fputs (
         "    const cser_xml_tag_t tag = { \"i\", has_value };\n"
         "    if (!cser_xml_opentag (&tag, ctx))\n"
         "      return false;\n", fc);
-    }
-    else
-      fprintf (fc,
-        "    bool has_value = %s%s;\n"
-        , m->opts.is_ptr ? "val->" : "", m->opts.is_ptr ? m->member_name : "true"
-        );
 
     fprintf (fc,
-      "    if (has_value && !cser_xml_store_%s ((const %s *)%sval->%s%s, ctx))\n"
+      "    if (has_value && !cser_xml_store_%s (%sval->%s%s, ctx))\n"
       "      return false;\n",
-      utype, m->base_type, (m->opts.is_ptr && !use_idx) ? "" : "&", m->member_name, use_idx ? "[i]" : ""
+      utype, item_is_ptr ? "" : "&", m->member_name, use_idx ? "[i]" : ""
       );
 
     if (m->opts.cardinality != CDN_SINGLE)
-    {
       fputs (
         "    if (!cser_xml_closetag (\"i\", ctx))\n"
         "      return false;\n", fc);
-    }
-
   }
   free (utype);
 
@@ -236,8 +231,11 @@ static bool write_store_struct (const type_t *type, FILE *fh, FILE *fc)
 static void write_load_member_item (const member_t *m, FILE *fc)
 {
   bool use_idx = (m->opts.cardinality != CDN_SINGLE);
+  bool fixed_size =
+    (m->opts.cardinality == CDN_SINGLE ||
+     m->opts.cardinality == CDN_FIXED_ARRAY);
   char *utype = make_cname (m->base_type);
-  if (m->opts.is_ptr)
+  if (m->opts.is_ptr && fixed_size)
     fprintf (fc,
       "    if (!tag.has_value)\n"
       "      val->%s%s = 0;\n"
@@ -253,10 +251,7 @@ static void write_load_member_item (const member_t *m, FILE *fc)
       );
   else
   {
-    bool needs_alloc =
-      (m->opts.is_ptr &&
-       (m->opts.cardinality == CDN_SINGLE ||
-        m->opts.cardinality == CDN_FIXED_ARRAY));
+    bool needs_alloc = (m->opts.is_ptr && fixed_size);
     if (needs_alloc)
     {
       fprintf (fc,
@@ -279,7 +274,7 @@ static void write_load_member_item (const member_t *m, FILE *fc)
         utype, m->base_type, m->member_name, use_idx ? "[i]" : ""
         );
   }
-  if (m->opts.is_ptr)
+  if (m->opts.is_ptr && fixed_size)
     fputs ("    }\n", fc);
   free (utype);
 }
@@ -304,7 +299,7 @@ static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
   {
     utype = make_cname (type->type_name);
     fprintf (fc,
-      "  if (cser_xml_nexttag (&tag, ctx))\n"
+      "  if (!cser_xml_nexttag (&tag, ctx))\n"
       "    return false;\n"
       "  if (strcmp (tag.name, \"%s\") != 0)\n"
       "    return false;\n",
@@ -315,11 +310,15 @@ static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
     {
       case CDN_VAR_ARRAY:
         fprintf (fc,
-          "  val->%s = (%s *)calloc (%s, sizeof (%s));\n"
-          "  for (size_t i = 0; i < (%s); ++i)\n"
-          "  {\n",
-          m->member_name, m->base_type, m->opts.variable_array_size_member, m->base_type,
-          m->opts.variable_array_size_member
+          "  val->%s = (%s *)calloc (val->%s, sizeof (%s));\n"
+          "  for (size_t i = 0; i < (val->%s); ++i)\n"
+          "  {\n"
+          "    if (!cser_xml_nexttag (&tag, ctx))\n"
+          "      return false;\n"
+          "    if (strcmp (\"i\", tag.name) != 0)\n"
+          "      return false;\n"
+          , m->member_name, m->base_type, m->opts.variable_array_size_member, m->base_type
+          , m->opts.variable_array_size_member
           );
         write_load_member_item (m, fc);
         fputs ("  }\n", fc);
@@ -354,8 +353,12 @@ static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
       case CDN_FIXED_ARRAY:
         fprintf (fc,
           "  for (size_t i = 0; i < (%s); ++i)\n"
-          "  {\n",
-          m->opts.arr_sz
+          "  {\n"
+          "    if (!cser_xml_nexttag (&tag, ctx))\n"
+          "      return false;\n"
+          "    if (strcmp (\"i\", tag.name) != 0)\n"
+          "      return false;\n"
+          , m->opts.arr_sz
           );
         write_load_member_item (m, fc);
         fputs ("  }\n", fc);

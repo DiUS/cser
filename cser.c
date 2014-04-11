@@ -32,7 +32,7 @@ static void print_decs (const decorations_t *d)
   {
     case CDN_SINGLE: break;
     case CDN_FIXED_ARRAY: printf ("[%s]", d->arr_sz); break;
-    case CDN_VAR_ARRAY: printf (" /*vararray:%s*/", d->variable_array_size_member); break;
+    case CDN_VAR_ARRAY: printf (" /*varlen:%s*/", d->variable_array_size_member); break;
     case CDN_ZEROTERM_ARRAY: printf (" /*zeroterm*/"); break;
   }
 }
