@@ -337,13 +337,16 @@ static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
           "    if (i >= n)\n"
           "    {\n"
           "      if (n == 0)\n"
-          "        n = 2;\n"
+          "        n = 2 * sizeof (%s);\n"
           "      val->%s = (%s *)realloc (val->%s, n *= 2);\n"
           "      if (!val->%s)\n"
           "        return false;\n"
+          "      memset (((char *)val->%s) + n/2, n/2, 0);\n"
           "    }\n"
           , m->member_name
+          , m->base_type
           , m->member_name, m->base_type, m->member_name
+          , m->member_name
           , m->member_name
           );
         write_load_member_item (m, fc);

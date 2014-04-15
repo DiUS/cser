@@ -276,8 +276,6 @@ static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
         // incrementally load until it finds the end marker. A bog standard
         // 2*n alloc/copy/retry approach is used for now.
 
-        // TODO: memset the fresh allocation so it's in a known state
-
         write_presence_check (fc);
         fprintf (fc,
           "    %s *tmp = 0;\n"
@@ -287,13 +285,15 @@ static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
           "      if (offs >= n)\n"
           "      {\n"
           "        if (n == 0)\n"
-          "          n = 2;\n"
+          "          n = 2 * sizeof(%s);\n"
           "        tmp = (%s *)realloc (tmp, n *= 2);\n"
           "        if (!tmp)\n"
           "          return -ENOMEM;\n"
-          "      }\n",
-          m->base_type,
-          m->base_type
+          "        memset ((char *)tmp + n/2, n/2, 0);\n"
+          "      }\n"
+          , m->base_type
+          , m->base_type
+          , m->base_type
           );
         write_load_item (
           "tmp[offs++]", m->base_type, "      ", false, fc);
