@@ -324,34 +324,36 @@ static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
         fputs ("  }\n", fc);
         break;
       case CDN_ZEROTERM_ARRAY:
-        fprintf (fc,
-          "  {\n"
-          "  val->%s = 0;\n"
-          "  size_t n = 0;\n"
-          "  for (size_t i = 0; tag.has_value; ++i)\n"
-          "  {\n"
-          "    if (!cser_xml_nexttag (&tag, ctx))\n"
-          "      return false;\n"
-          "    if (strcmp (\"i\", tag.name) != 0)\n"
-          "      return false;\n"
-          "    if (i >= n)\n"
-          "    {\n"
-          "      if (n == 0)\n"
-          "        n = 2 * sizeof (%s);\n"
-          "      val->%s = (%s *)realloc (val->%s, n *= 2);\n"
-          "      if (!val->%s)\n"
-          "        return false;\n"
-          "      memset (((char *)val->%s) + n/2, n/2, 0);\n"
-          "    }\n"
-          , m->member_name
-          , m->base_type
-          , m->member_name, m->base_type, m->member_name
-          , m->member_name
-          , m->member_name
-          );
+        if (!is_string (m))
+          fprintf (fc,
+            "  {\n"
+            "  val->%s = 0;\n"
+            "  size_t n = 0;\n"
+            "  for (size_t i = 0; tag.has_value; ++i)\n"
+            "  {\n"
+            "    if (!cser_xml_nexttag (&tag, ctx))\n"
+            "      return false;\n"
+            "    if (strcmp (\"i\", tag.name) != 0)\n"
+            "      return false;\n"
+            "    if (i >= n)\n"
+            "    {\n"
+            "      if (n == 0)\n"
+            "        n = 2 * sizeof (%s);\n"
+            "      val->%s = (%s *)realloc (val->%s, n *= 2);\n"
+            "      if (!val->%s)\n"
+            "        return false;\n"
+            "      memset (((char *)val->%s) + n/2, n/2, 0);\n"
+            "    }\n"
+            , m->member_name
+            , m->base_type
+            , m->member_name, m->base_type, m->member_name
+            , m->member_name
+            , m->member_name
+            );
         write_load_member_item (m, fc);
-        fputs (
-          "  }\n  }\n", fc);
+        if (!is_string (m))
+          fputs (
+            "  }\n  }\n", fc);
         break;
       case CDN_FIXED_ARRAY:
         fprintf (fc,
