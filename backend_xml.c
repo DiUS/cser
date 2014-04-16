@@ -246,7 +246,7 @@ static void write_load_member_item (const member_t *m, FILE *fc)
 
   if (is_string (m))
     fprintf (fc,
-      "    val->%s = cser_xml_getvalue (ctx);\n",
+      "    val->%s = tag.has_value ? cser_xml_getvalue (ctx) : 0;\n",
       m->member_name
       );
   else
