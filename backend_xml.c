@@ -258,7 +258,7 @@ static void write_load_member_item (const member_t *m, FILE *fc)
         "    %s *tmpval = (%s *)calloc (1, sizeof (%s));\n"
         "    if (!cser_xml_load_%s (tmpval, ctx))\n"
         "    {\n"
-        "      free (tmpval);\n"
+        "      free (tmpval);\n" // FIXME: needs to be a deep-free
         "      return false;\n"
         "    }\n"
         "    val->%s%s = tmpval;\n",
@@ -314,9 +314,9 @@ static bool write_load_struct (const type_t *type, FILE *fh, FILE *fc)
           "  for (size_t i = 0; i < (val->%s); ++i)\n"
           "  {\n"
           "    if (!cser_xml_nexttag (&tag, ctx))\n"
-          "      return false;\n"
+          "      return false;\n" // FIXME: need to deep-free val->%s here
           "    if (strcmp (\"i\", tag.name) != 0)\n"
-          "      return false;\n"
+          "      return false;\n" // FIXME: ... and here
           , m->member_name, m->base_type, m->opts.variable_array_size_member, m->base_type
           , m->opts.variable_array_size_member
           );
