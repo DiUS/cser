@@ -1,11 +1,5 @@
-/**********************************************************************
+/* Copyright (C) 2014 DiUS Computing Pty. Ltd.   See LICENSE file. */
 
-  Copyright 2014 DiUS Computing Pty. Ltd. All rights reserved.
-  Redistribution and use in source and binary forms, with or without
-  modification requires the prior written consent of the copyright
-  owner.
-
-**********************************************************************/
 #ifndef _FRONTEND_H_
 #define _FRONTEND_H_
 
