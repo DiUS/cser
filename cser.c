@@ -211,9 +211,11 @@ typedef struct include_list
 void syntax (const char *name)
 {
   fprintf (stderr, "cser v%s\n", VERSION);
-  fprintf (stderr, "Syntax: %s [-v] [-o <basename>] [[-b <backend>]...] <type...>\n", name);
+  fprintf (stderr, "Syntax: %s [-v] [-o <basename>] [[-b <backend>]...] [[-i <include>]...] <type...>\n", name);
   fprintf (stderr, "  available backends:\n");
   fprintf (stderr, "    raw     binary format (default)\n");
+  fprintf (stderr, "    xml     XML format\n");
+  fprintf (stderr, "  files specified with -i are #include'd in the output\n");
   fprintf (stderr, "\n");
   exit (1);
 }
